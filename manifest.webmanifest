@@ -1,20 +1,19 @@
-
 {
-  "name": "Screen & Webcam Recorder",
-  "short_name": "Recorder",
-  "start_url": "./index.html",
+  "name": "Pro Screen Recorder",
+  "short_name": "ProRecorder",
+  "description": "An advanced screen and webcam recorder with drawing tools that works offline.",
+  "start_url": ".",
   "display": "standalone",
-  "background_color": "#1f2937",
+  "background_color": "#111827",
   "theme_color": "#4f46e5",
-  "description": "Record screen and webcam with full privacy.",
   "icons": [
     {
-      "src": "../images/icon128.png",
+      "src": "https://placehold.co/192x192/4f46e5/ffffff?text=REC",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "../images/icon512.png",
+      "src": "https://placehold.co/512x512/4f46e5/ffffff?text=REC",
       "type": "image/png",
       "sizes": "512x512"
     }

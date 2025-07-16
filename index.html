@@ -1,252 +1,318 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Screen & Webcam Recorder</title>
-  <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#4f46e5" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: sans-serif; background-color: #1f2937; }
-    #webcam { position: absolute; bottom: 20px; right: 20px; width: 150px; height: 150px; border-radius: 1rem; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.5); display: none; z-index: 10; }
-    #modalOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); display: flex; justify-content: center; align-items: center; z-index: 50; }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pro Screen Recorder</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#111827" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --accent-color: #4f46e5; }
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #f9fafb; }
+        html.light body { background-color: #f3f4f6; color: #111827; }
+        .control-panel, .video-container { background-color: #1f2937; border: 1px solid #374151; }
+        html.light .control-panel, html.light .video-container { background-color: #ffffff; border: 1px solid #e5e7eb; }
+        #webcam-preview { position: absolute; border: 2px solid var(--accent-color); box-shadow: 0 4px 15px rgba(0,0,0,0.4); cursor: move; resize: both; overflow: hidden; z-index: 20; }
+        #drawing-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: crosshair; z-index: 10; touch-action: none; }
+        .control-icon { transition: all 0.2s ease-in-out; }
+        .control-icon:hover { color: var(--accent-color); transform: scale(1.1); }
+        .color-swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .color-swatch.active { border-color: #ffffff; transform: scale(1.2); }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="text-white flex flex-col items-center justify-center min-h-screen">
+<body class="flex items-center justify-center min-h-screen p-4">
 
-  <div id="modalOverlay" class="hidden">
-    <div class="bg-white text-black p-6 rounded-xl max-w-md text-center shadow-lg">
-      <h2 class="text-xl font-bold mb-4">Important</h2>
-      <p class="mb-4">To record your entire screen, please select <strong>"Entire Screen"</strong> in the next browser prompt.</p>
-      <button id="proceedBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg">Proceed</button>
+    <div class="w-full max-w-5xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold">Pro Screen Recorder</h1>
+            <p class="text-gray-400 mt-1">Record, draw, and produce with ease.</p>
+        </header>
+
+        <div class="video-container rounded-xl shadow-2xl overflow-hidden relative">
+            <video id="preview" class="w-full h-full aspect-video block" autoplay muted></video>
+            <canvas id="drawing-canvas" class="hidden"></canvas>
+            <video id="webcam-preview" class="rounded-lg hidden" autoplay muted></video>
+        </div>
+
+        <div class="control-panel rounded-xl shadow-lg mt-6 p-6">
+            <!-- Main Controls -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button id="startBtn" class="w-full sm:w-auto flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105">
+                    <i class="fas fa-play"></i> Start Recording
+                </button>
+                <button id="stopBtn" class="w-full sm:w-auto flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105" disabled>
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+
+            <!-- Options -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mt-8 pt-6 border-t border-gray-700/50">
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="webcamToggle" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-600"><span>Webcam</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="micToggle" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-600"><span>Microphone</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="systemAudioToggle" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-600" checked><span>System Audio</span></label>
+                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="drawToggle" class="h-5 w-5 rounded bg-gray-700 border-gray-600 text-indigo-500 focus:ring-indigo-600"><span>Draw</span></label>
+            </div>
+
+            <!-- Drawing Tools -->
+            <div id="drawing-tools" class="mt-6 pt-6 border-t border-gray-700/50 text-center hidden">
+                <div class="flex items-center justify-center gap-4">
+                    <span class="text-sm font-medium">Pen Color:</span>
+                    <div class="color-swatch active" style="background-color: #ef4444;" data-color="#ef4444"></div>
+                    <div class="color-swatch" style="background-color: #3b82f6;" data-color="#3b82f6"></div>
+                    <div class="color-swatch" style="background-color: #22c55e;" data-color="#22c55e"></div>
+                    <div class="color-swatch" style="background-color: #eab308;" data-color="#eab308"></div>
+                    <div class="color-swatch" style="background-color: #f9fafb;" data-color="#f9fafb"></div>
+                </div>
+            </div>
+            
+            <!-- Download Area -->
+            <div id="downloadArea" class="mt-6 text-center hidden">
+                <a id="downloadLink" class="inline-flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-lg transition-all transform hover:scale-105">
+                    <i class="fas fa-download"></i> Download Recording
+                </a>
+            </div>
+        </div>
+        <button id="themeToggle" class="fixed top-4 right-4 h-10 w-10 flex items-center justify-center bg-gray-700 rounded-full text-white"><i class="fas fa-sun"></i></button>
     </div>
-  </div>
 
-  <main class="w-full max-w-3xl px-4 py-8">
-  <div class="flex justify-end mb-4">
-    <button id="themeToggle" class="text-sm px-3 py-1 border border-gray-400 rounded">Toggle Theme</button>
-  </div>
-    <h1 class="text-2xl font-bold mb-4 text-center">Screen & Webcam Recorder</h1>
-
-    <div class="aspect-video bg-black relative rounded-lg overflow-hidden">
-      <video id="preview" class="w-full h-full object-contain" autoplay muted controls></video>
-      <video id="webcam" autoplay muted class="circle"></video>
-<div id="watermark" class="absolute top-2 left-2 text-xs bg-black bg-opacity-50 px-3 py-1 rounded text-white z-40 hidden">Your Signature</div>
-<div id="smartTip" class="absolute bottom-2 left-2 text-xs bg-indigo-600 text-white px-3 py-1 rounded hidden z-40">Tip: Press ESC to stop screen share</div>
-
-<div id="countdown" class="absolute inset-0 flex items-center justify-center text-white text-6xl font-bold bg-black bg-opacity-75 hidden z-50">3</div>
-    </div>
-
-    <div class="mt-6 flex flex-wrap gap-4 justify-center items-center">
-<label class="flex items-center gap-2">
-  <input type="checkbox" id="cleanUiToggle" />
-  <span>Clean UI Mode</span>
-</label>
-
-      <label class="flex items-center gap-2">
-        <input type="checkbox" id="shapeToggle" />
-        <span>Rounded Webcam</span>
-      </label>
-      <label class="flex items-center gap-2">
-        <input type="checkbox" id="micToggle" />
-        <span>Record Microphone</span>
-      </label>
-      <label class="flex items-center gap-2">
-        <input type="checkbox" id="webcamToggle" />
-        <span>Include Webcam</span>
-      </label>
-    </div>
-
-    <div class="mt-6 flex flex-wrap gap-4 justify-center">
-  <button id="pipBtn" class="bg-yellow-500 px-4 py-2 rounded text-black">Webcam PiP</button>
-      <button id="startBtn" class="bg-indigo-600 px-6 py-2 rounded-lg">Start Recording</button>
-      <button id="stopBtn" class="bg-red-600 px-6 py-2 rounded-lg" disabled>Stop</button>
-    </div>
-
-    <div id="downloadArea" class="mt-6 text-center hidden">
-      <a id="downloadLink" class="bg-green-600 px-6 py-2 rounded-lg text-white">Download Recording</a>
-    </div>
-
-    <button id="helpBtn" class="block mx-auto mt-6 text-sm text-blue-400 underline">How to Use</button>
-<div id="helpModal" class="fixed inset-0 bg-black bg-opacity-75 text-white p-8 hidden z-50 flex items-center justify-center">
-  <div class="bg-gray-900 p-6 rounded max-w-lg w-full">
-    <h2 class="text-xl font-bold mb-2">How to Use</h2>
-    <ul class="list-disc pl-5 space-y-1 text-sm">
-      <li>Click "Start Recording"</li>
-      <li>Select "Entire Screen" to capture everything</li>
-      <li>Toggle webcam/mic as needed</li>
-      <li>Use PiP or Drawing tools if enabled</li>
-    </ul>
-    <button id="closeHelp" class="mt-4 bg-indigo-600 px-4 py-2 rounded">Close</button>
-  </div>
-</div>
-<p class="text-xs text-gray-400 text-center mt-6">Your privacy is protected. Nothing is uploaded.</p>
-  </main>
-
-  <script>
-    const preview = document.getElementById('preview');
-    const webcam = document.getElementById('webcam');
-    const webcamToggle = document.getElementById('webcamToggle');
-    const micToggle = document.getElementById('micToggle');
+    <script>
+    // DOM Elements
+    const previewVideo = document.getElementById('preview');
+    const webcamPreview = document.getElementById('webcam-preview');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const downloadLink = document.getElementById('downloadLink');
     const downloadArea = document.getElementById('downloadArea');
-    const modalOverlay = document.getElementById('modalOverlay');
-    const proceedBtn = document.getElementById('proceedBtn');
-
-    let mediaRecorder;
-    let chunks = [];
-    let screenStream;
-    let micStream;
-    let camStream;
-
-    proceedBtn.onclick = startRecording;
-
-    startBtn.onclick = () => {
-      modalOverlay.classList.remove('hidden');
-    };
-
-    async function async startRecording() {
-      await showCountdown();
-      modalOverlay.classList.add('hidden');
-      chunks = [];
-      downloadArea.classList.add('hidden');
-      downloadLink.href = '';
-
-      try {
-        screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-
-        if (micToggle.checked) {
-          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        }
-
-        if (webcamToggle.checked) {
-          camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-          webcam.srcObject = camStream;
-          webcam.style.display = 'block';
-        }
-
-        const streamTracks = [
-          ...screenStream.getTracks(),
-          ...(micStream ? micStream.getAudioTracks() : [])
-        ];
-        const mixedStream = new MediaStream(streamTracks);
-
-        mediaRecorder = new MediaRecorder(mixedStream, { mimeType: 'video/webm; codecs=vp9' });
-        mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
-          const url = URL.createObjectURL(blob);
-          preview.srcObject = null;
-          preview.src = url;
-          preview.muted = false;
-          preview.play();
-          downloadLink.href = url;
-          downloadLink.download = "recording-" + new Date().toISOString().replace(/[:.]/g, '-') + ".webm";
-          downloadArea.classList.remove('hidden');
-        };
-
-        mediaRecorder.start();
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-
-      } catch (err) {
-        alert("Error: " + err.message);
-        console.error(err);
-      }
-    }
-
-    stopBtn.onclick = () => {
-      mediaRecorder.stop();
-      screenStream.getTracks().forEach(t => t.stop());
-      micStream?.getTracks().forEach(t => t.stop());
-      camStream?.getTracks().forEach(t => t.stop());
-      webcam.srcObject = null;
-      webcam.style.display = 'none';
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-    };
-
-    // Theme toggle
+    const webcamToggle = document.getElementById('webcamToggle');
+    const micToggle = document.getElementById('micToggle');
+    const systemAudioToggle = document.getElementById('systemAudioToggle');
+    const drawToggle = document.getElementById('drawToggle');
+    const drawingCanvas = document.getElementById('drawing-canvas');
+    const drawingTools = document.getElementById('drawing-tools');
     const themeToggle = document.getElementById('themeToggle');
-    themeToggle.onclick = () => {
-      const isDark = document.documentElement.classList.toggle('dark');
-      localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    };
-    if (localStorage.getItem('theme') === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
 
-    // Webcam PiP
-    const pipBtn = document.getElementById('pipBtn');
-    pipBtn.onclick = async () => {
-      if ('documentPictureInPicture' in window && webcam.srcObject) {
+    // State
+    let mediaRecorder;
+    let recordedChunks = [];
+    let screenStream, webcamStream, micStream, combinedStream;
+    let canvas, ctx, drawingCtx;
+    let isDrawing = false;
+    let penColor = '#ef4444';
+    let animationFrameId;
+
+    // --- Core Recording Logic ---
+
+    async function startRecording() {
         try {
-          await documentPictureInPicture.requestWindow(webcam);
+            // Reset UI
+            recordedChunks = [];
+            downloadArea.classList.add('hidden');
+            setRecordingState(true);
+
+            // Get streams based on toggles
+            screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: { cursor: "always" },
+                audio: systemAudioToggle.checked
+            });
+
+            if (webcamToggle.checked) {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                webcamPreview.srcObject = webcamStream;
+                webcamPreview.classList.remove('hidden');
+            }
+            if (micToggle.checked) {
+                micStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true });
+            }
+
+            // Prepare canvas for combining
+            const screenTrack = screenStream.getVideoTracks()[0];
+            const { width, height } = screenTrack.getSettings();
+            canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            ctx = canvas.getContext('2d');
+            
+            // Setup drawing canvas
+            drawingCanvas.width = previewVideo.clientWidth;
+            drawingCanvas.height = previewVideo.clientHeight;
+            drawingCtx = drawingCanvas.getContext('2d');
+            drawingCtx.lineWidth = 5;
+            drawingCtx.lineCap = 'round';
+            drawingCtx.strokeStyle = penColor;
+
+            // Start drawing loop
+            drawToCanvas();
+
+            // Create combined stream from canvas and audio
+            const audioTracks = [
+                ...(micStream ? micStream.getAudioTracks() : []),
+                ...(systemAudioToggle.checked ? screenStream.getAudioTracks() : [])
+            ];
+            combinedStream = canvas.captureStream(30); // 30 FPS
+            audioTracks.forEach(track => combinedStream.addTrack(track));
+            
+            // Set preview and start recorder
+            previewVideo.srcObject = combinedStream;
+            mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm; codecs=vp9' });
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = handleStop;
+            mediaRecorder.start();
+
         } catch (err) {
-          alert('PiP not supported or already active.');
+            console.error("Recording Error:", err);
+            alert("Failed to start recording. Please ensure you've granted all necessary permissions.");
+            stopRecording(); // Reset everything
         }
-      } else {
-        alert('Your browser does not support Picture-in-Picture.');
-      }
-    };
-
-    // Countdown timer
-    const countdown = document.getElementById('countdown');
-    async function showCountdown() {
-      countdown.classList.remove('hidden');
-      for (let i = 3; i > 0; i--) {
-        countdown.textContent = i;
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      countdown.classList.add('hidden');
     }
 
-    // Shape toggle
-    document.getElementById('shapeToggle').onchange = (e) => {
-      const isRounded = e.target.checked;
-      webcam.classList.toggle('circle', isRounded);
-      webcam.classList.toggle('square', !isRounded);
-    };
+    function stopRecording() {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+        }
+        // Stop all tracks and streams
+        [screenStream, webcamStream, micStream].forEach(stream => stream?.getTracks().forEach(track => track.stop()));
+        if(animationFrameId) cancelAnimationFrame(animationFrameId);
+        
+        // Reset UI
+        setRecordingState(false);
+        webcamPreview.classList.add('hidden');
+        drawingCanvas.classList.add('hidden');
+        previewVideo.srcObject = null;
+    }
 
+    function handleStop() {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        
+        previewVideo.src = url;
+        previewVideo.muted = false;
+
+        downloadLink.href = url;
+        downloadLink.download = `recording-${new Date().toISOString()}.webm`;
+        downloadArea.classList.remove('hidden');
+    }
+
+    function drawToCanvas() {
+        if (!screenStream || !screenStream.active) {
+            stopRecording();
+            return;
+        }
+        // Draw screen
+        ctx.drawImage(screenStream.getVideoTracks()[0].getMediaStreamTrack(), 0, 0, canvas.width, canvas.height);
+        
+        // Draw webcam if active
+        if (webcamStream && webcamStream.active) {
+            const x = (webcamPreview.offsetLeft / previewVideo.clientWidth) * canvas.width;
+            const y = (webcamPreview.offsetTop / previewVideo.clientHeight) * canvas.height;
+            const width = (webcamPreview.offsetWidth / previewVideo.clientWidth) * canvas.width;
+            const height = (webcamPreview.offsetHeight / previewVideo.clientHeight) * canvas.height;
+            ctx.drawImage(webcamStream.getVideoTracks()[0].getMediaStreamTrack(), x, y, width, height);
+        }
+
+        // Draw the drawing canvas on top
+        if (drawToggle.checked) {
+            ctx.drawImage(drawingCanvas, 0, 0, canvas.width, canvas.height);
+        }
+
+        animationFrameId = requestAnimationFrame(drawToCanvas);
+    }
     
-    // Watermark overlay
-    const watermark = document.getElementById('watermark');
-    const smartTip = document.getElementById('smartTip');
-    const cleanUiToggle = document.getElementById('cleanUiToggle');
+    // --- UI & Event Handlers ---
 
-    // Clean UI toggle
-    cleanUiToggle.onchange = () => {
-      const hide = cleanUiToggle.checked;
-      document.querySelectorAll('header, button, label, #downloadArea').forEach(el => {
-        el.style.display = hide ? 'none' : '';
-      });
-      watermark.classList.toggle('hidden', !hide);
-      smartTip.classList.toggle('hidden', !hide);
-    };
-
-    // Help modal
-    document.getElementById('helpBtn').onclick = () => {
-      document.getElementById('helpModal').classList.remove('hidden');
-    };
-    document.getElementById('closeHelp').onclick = () => {
-      document.getElementById('helpModal').classList.add('hidden');
-    };
-
-    // Register PWA service worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js');
+    function setRecordingState(isRecording) {
+        startBtn.disabled = isRecording;
+        stopBtn.disabled = !isRecording;
+        [webcamToggle, micToggle, systemAudioToggle, drawToggle].forEach(toggle => toggle.disabled = isRecording);
     }
-    // Register PWA service worker
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('service-worker.js')
-    .then(() => console.log('✅ Service Worker registered'))
-    .catch(err => console.error('❌ Service Worker registration failed:', err));
-}
 
-  </script>
+    startBtn.addEventListener('click', startRecording);
+    stopBtn.addEventListener('click', stopRecording);
+    
+    // Drawing Logic
+    drawToggle.addEventListener('change', () => {
+        const enabled = drawToggle.checked;
+        drawingCanvas.classList.toggle('hidden', !enabled);
+        drawingTools.classList.toggle('hidden', !enabled);
+    });
+
+    drawingCanvas.addEventListener('mousedown', (e) => {
+        if (!drawToggle.checked) return;
+        isDrawing = true;
+        const { x, y } = getCanvasCoords(e);
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(x, y);
+    });
+
+    drawingCanvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing || !drawToggle.checked) return;
+        const { x, y } = getCanvasCoords(e);
+        drawingCtx.lineTo(x, y);
+        drawingCtx.stroke();
+    });
+
+    drawingCanvas.addEventListener('mouseup', () => isDrawing = false);
+    drawingCanvas.addEventListener('mouseout', () => isDrawing = false);
+    
+    function getCanvasCoords(e) {
+        const rect = drawingCanvas.getBoundingClientRect();
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
+    
+    drawingTools.addEventListener('click', (e) => {
+        if (e.target.classList.contains('color-swatch')) {
+            penColor = e.target.dataset.color;
+            drawingCtx.strokeStyle = penColor;
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            e.target.classList.add('active');
+        }
+    });
+
+    // Webcam Dragging Logic
+    let isDragging = false, offsetX, offsetY;
+    webcamPreview.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        offsetX = e.clientX - webcamPreview.offsetLeft;
+        offsetY = e.clientY - webcamPreview.offsetTop;
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const parentRect = previewVideo.getBoundingClientRect();
+        let newX = e.clientX - offsetX;
+        let newY = e.clientY - offsetY;
+        
+        // Constrain movement
+        newX = Math.max(0, Math.min(newX, parentRect.width - webcamPreview.offsetWidth));
+        newY = Math.max(0, Math.min(newY, parentRect.height - webcamPreview.offsetHeight));
+        
+        webcamPreview.style.left = `${newX}px`;
+        webcamPreview.style.top = `${newY}px`;
+    });
+    document.addEventListener('mouseup', () => isDragging = false);
+    
+    // Theme Toggle
+    themeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.toggle('dark');
+        document.documentElement.classList.toggle('light', !isDark);
+        themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    });
+    
+    // PWA Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(reg => console.log('Service Worker registered.', reg))
+                .catch(err => console.error('Service Worker registration failed:', err));
+        });
+    }
+
+    // Monkey-patch getMediaStreamTrack() to return the video element for drawing on canvas
+    HTMLVideoElement.prototype.getMediaStreamTrack = function() { return this; };
+    </script>
 </body>
 </html>
