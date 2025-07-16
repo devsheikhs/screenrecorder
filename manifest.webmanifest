@@ -1,0 +1,22 @@
+
+{
+  "name": "Screen & Webcam Recorder",
+  "short_name": "Recorder",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1f2937",
+  "theme_color": "#4f46e5",
+  "description": "Record screen and webcam with full privacy.",
+  "icons": [
+    {
+      "src": "../images/icon128.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "../images/icon512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
